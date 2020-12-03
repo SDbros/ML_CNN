@@ -8,8 +8,8 @@ from tensorflow.python.keras.utils.vis_utils import plot_model
 
 from gen_circle import synthetic_gen
 
-BATCH_SIZE = 64
-EPOCH_SIZE = 64
+BATCH_SIZE = 16
+EPOCH_SIZE = 16
 
 # transfer learning - load pre-trained vgg and replace its head
 vgg = tf.keras.applications.VGG16(input_shape=[128, 128, 3], include_top=False, weights='imagenet')
@@ -20,7 +20,8 @@ model1.compile(loss='binary_crossentropy', optimizer=Adam(lr=0.001))
 # plot the model
 plot_model(model1, "first_model.png", show_shapes=True, expand_nested=False)
 # needs steps per epoch since the generator is infinite
-model1.fit(synthetic_gen(), steps_per_epoch=EPOCH_SIZE, epochs=5)
+model1.fit(synthetic_gen(batch_size=BATCH_SIZE), steps_per_epoch=EPOCH_SIZE, epochs=5)
+model1.save('model')
 
 
 # given image and a label, plots the image + rectangle
