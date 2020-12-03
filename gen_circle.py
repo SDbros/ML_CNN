@@ -46,6 +46,6 @@ def oval_gen(batch_size=1):
 
 
 # sanity check - plot the images
-#x, y = next(synthetic_gen())
-x, y = oval_gen()
-plt.imshow(x[0])
+# x, y = next(synthetic_gen())
+# x, y = oval_gen()
+# plt.imshow(x[0])
