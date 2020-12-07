@@ -25,7 +25,7 @@ def plot_pred(img, p):
 
 # load model
 try:
-    new_model = tf.keras.models.load_model('model')
+    new_model = tf.keras.models.load_model('model_vgg16.h5')
 except FileNotFoundError as e:
     print("model not found")
 
