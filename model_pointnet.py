@@ -1,16 +1,17 @@
 import os
 import glob
+from timeit import default_timer as timer
 import trimesh
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+from tensorflow.keras import regularizers
 
 NUM_POINTS = 2048
 NUM_CLASSES = 10
-BATCH_SIZE = 8
+BATCH_SIZE = 16
 
-tf.random.set_seed(1234)
 DATA_DIR = tf.keras.utils.get_file(
     "modelnet.zip",
     "http://3dvision.princeton.edu/projects/2014/3DShapeNets/ModelNet10.zip",
@@ -18,72 +19,56 @@ DATA_DIR = tf.keras.utils.get_file(
 )
 DATA_DIR = os.path.join(os.path.dirname(DATA_DIR), "ModelNet10")
 
-
-# visualise data
-# mesh = trimesh.load(os.path.join(DATA_DIR, "chair/train/chair_0001.off"))
-# mesh.show()
-# points = mesh.sample(2048)
-# fig = plt.figure(figsize=(5, 5))
-# ax = fig.add_subplot(111, projection="3d")
-# ax.scatter(points[:, 0], points[:, 1], points[:, 2])
-# ax.set_axis_off()
-# plt.show()
-
-class OrthogonalRegularizer(keras.regularizers.Regularizer):
-    def __init__(self, num_features, l2reg=0.001):
-        self.num_features = num_features
-        self.l2reg = l2reg
-        self.eye = tf.eye(num_features)
-
-    def __call__(self, x):
-        x = tf.reshape(x, (-1, self.num_features, self.num_features))
-        xxt = tf.tensordot(x, x, axes=(2, 2))
-        xxt = tf.reshape(xxt, (-1, self.num_features, self.num_features))
-        return tf.reduce_sum(self.l2reg * tf.square(xxt - self.eye))
+# Create needed directories
+if not os.path.exists('pointcloud_test_files'):
+    os.makedirs('pointcloud_test_files')
+if not os.path.exists('pointcloud_train_files'):
+    os.makedirs('pointcloud_train_files')
 
 
-def parse_dataset(num_points=2048, classify=True):
+def parse_dataset(num_points=2048, generate_point_cloud=True):
     train_points = []
     train_labels = []
     test_points = []
     test_labels = []
-    class_map = {}
     folders = glob.glob(os.path.join(DATA_DIR, "[!README]*"))
+    pointcloud_train_files = glob.glob(os.path.join("pointcloud_train_files/*"))
+    pointcloud_test_files = glob.glob(os.path.join("pointcloud_test_files/*"))
 
     for i, folder in enumerate(folders):
         print("processing class: {}".format(os.path.basename(folder)))
-        # store folder name with ID so we can retrieve later
-        class_map[i] = folder.split("/")[-1]
         # gather all files
         train_files = glob.glob(os.path.join(folder, "train/*"))
         test_files = glob.glob(os.path.join(folder, "test/*"))
-        pointcloud_train_files = glob.glob(os.path.join(folder, "pointcloud_train/*"))
-        pointcloud_test_files = glob.glob(os.path.join(folder, "pointcloud_test/*"))
 
-        if classify:
+        if generate_point_cloud:
             print("generating point clouds for: {}".format(os.path.basename(folder)))
             for f in train_files:
                 cloud = trimesh.load(f).sample(num_points)
-                np.save(os.path.join("pointcloud_train_files/" + f[1]+".npy"), cloud)
+                train_points.append(cloud)
+                train_labels.append(i)
+                np.save('pointcloud_train_files/' + os.path.basename(f), cloud)
 
             for f in test_files:
                 cloud = trimesh.load(f).sample(num_points)
-                np.save(os.path.join("pointcloud_test_data/" + f[1]+".npy"), cloud)
+                test_points.append(cloud)
+                test_labels.append(i)
+                np.save('pointcloud_test_files/' + os.path.basename(f), cloud)
 
-        for f in pointcloud_train_files:
-            train_points.append(np.load(f))
-            train_labels.append(i)
+        else:
+            for f in pointcloud_train_files:
+                train_points.append(np.load(f))
+                train_labels.append(i)
 
-        for f in pointcloud_test_files:
-            test_points.append(np.load(f))
-            test_labels.append(i)
+            for f in pointcloud_test_files:
+                test_points.append(np.load(f))
+                test_labels.append(i)
 
     return (
         np.array(train_points),
         np.array(test_points),
         np.array(train_labels),
         np.array(test_labels),
-        class_map,
     )
 
 
@@ -110,7 +95,6 @@ def dense_bn(x, filters):
 def tnet(inputs, num_features):
     # Initialise bias as the identity matrix
     bias = keras.initializers.Constant(np.eye(num_features).flatten())
-    reg = OrthogonalRegularizer(num_features)
 
     x = conv_bn(inputs, 32)
     x = conv_bn(x, 64)
@@ -122,14 +106,14 @@ def tnet(inputs, num_features):
         num_features * num_features,
         kernel_initializer="zeros",
         bias_initializer=bias,
-        activity_regularizer=reg,
+        activity_regularizer=regularizers.l2(1e-5),
     )(x)
     feat_T = layers.Reshape((num_features, num_features))(x)
     # Apply affine transformation to input features
     return layers.Dot(axes=(2, 1))([inputs, feat_T])
 
 
-train_points, test_points, train_labels, test_labels, CLASS_MAP = parse_dataset(NUM_POINTS, False)
+train_points, test_points, train_labels, test_labels = parse_dataset(NUM_POINTS, generate_point_cloud=True)
 
 print("Building dataset")
 train_dataset = tf.data.Dataset.from_tensor_slices((train_points, train_labels))
@@ -165,8 +149,19 @@ model.compile(loss="sparse_categorical_crossentropy",
               metrics=["sparse_categorical_accuracy"],
               )
 
+start = timer()
 print("fitting model")
 model.fit(train_dataset, epochs=20, validation_data=test_dataset)
+end = timer()
+print("fitting model took ", end - start, ' seconds')
 
 print("saving model")
-model.save('model_pointnet')
+# save model to drive
+tf.keras.models.save_model(
+    model=model,
+    filepath='model_pointnet.h5',
+    overwrite=True,
+    include_optimizer=True,
+    save_format=None,
+    signatures=None
+)

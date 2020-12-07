@@ -1,24 +1,31 @@
 import os
 import glob
-import trimesh
 import numpy as np
 import tensorflow as tf
 from matplotlib import pyplot as plt
-from model_pointnet import BATCH_SIZE, NUM_POINTS, DATA_DIR
+
+DATA_DIR = tf.keras.utils.get_file(
+    "modelnet.zip",
+    "http://3dvision.princeton.edu/projects/2014/3DShapeNets/ModelNet10.zip",
+    extract=True,
+)
+DATA_DIR = os.path.join(os.path.dirname(DATA_DIR), "ModelNet10")
+
+print('starting pointnet_model test')
 
 
-def parse_test_dataset(num_points=2048):
+def parse_test_dataset():
     test_points = []
     test_labels = []
     class_map = {}
     folders = glob.glob(os.path.join(DATA_DIR, "[!README]*"))
+    pointcloud_test_files = glob.glob(os.path.join("pointcloud_test_files/*"))
 
     for i, folder in enumerate(folders):
         print("processing class: {}".format(os.path.basename(folder)))
         # store folder name with ID so we can retrieve later
         class_map[i] = folder.split("/")[-1]
         # gather all files
-        pointcloud_test_files = glob.glob(os.path.join(folder, "pointcloud_test/*"))
 
         for f in pointcloud_test_files:
             test_points.append(np.load(f))
@@ -31,9 +38,9 @@ def parse_test_dataset(num_points=2048):
     )
 
 
-test_points, test_labels, CLASS_MAP = parse_test_dataset(NUM_POINTS)
+test_points, test_labels, CLASS_MAP = parse_test_dataset()
 test_dataset = tf.data.Dataset.from_tensor_slices((test_points, test_labels))
-test_dataset = test_dataset.shuffle(len(test_points)).batch(BATCH_SIZE)
+test_dataset = test_dataset.shuffle(len(test_points)).batch(batch_size=16)
 
 data = test_dataset.take(1)
 
@@ -43,7 +50,7 @@ labels = labels[:8, ...]
 
 # load model
 try:
-    model = tf.keras.models.load_model('model_pointnet')
+    model = tf.keras.models.load_model('model_pointnet.h5')
 except FileNotFoundError as e:
     print("model not found")
 
@@ -60,7 +67,7 @@ for i in range(8):
     ax.scatter(points[i, :, 0], points[i, :, 1], points[i, :, 2])
     ax.set_title(
         "pred: {:}, label: {:}".format(
-            CLASS_MAP[preds[i].numpy()], CLASS_MAP[labels.numpy()[i]]
+            os.path.basename(CLASS_MAP[preds[i].numpy()]), os.path.basename(CLASS_MAP[labels.numpy()[i]])
         )
     )
     ax.set_axis_off()
