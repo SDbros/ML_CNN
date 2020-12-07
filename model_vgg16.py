@@ -16,7 +16,7 @@ model1.compile(loss='binary_crossentropy', optimizer=Adam(lr=0.001))
 
 # needs steps per epoch since the generator is infinite
 model1.fit(synthetic_gen(batch_size=BATCH_SIZE), steps_per_epoch=EPOCH_SIZE, epochs=25)
-model1.save('model')
+model1.save('model_vgg16')
 
 
 
