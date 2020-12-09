@@ -10,14 +10,18 @@ from tensorflow.keras import regularizers
 
 NUM_POINTS = 2048
 NUM_CLASSES = 10
-BATCH_SIZE = 16
+BATCH_SIZE = 32
 
+tf.random.set_seed(1337)
 DATA_DIR = tf.keras.utils.get_file(
     "modelnet.zip",
     "http://3dvision.princeton.edu/projects/2014/3DShapeNets/ModelNet10.zip",
     extract=True,
 )
 DATA_DIR = os.path.join(os.path.dirname(DATA_DIR), "ModelNet10")
+
+#for total runtime
+start1 = timer()
 
 # Create needed directories
 if not os.path.exists('pointcloud_test_files'):
@@ -149,11 +153,11 @@ model.compile(loss="sparse_categorical_crossentropy",
               metrics=["sparse_categorical_accuracy"],
               )
 
-start = timer()
+start2 = timer()
 print("fitting model")
 model.fit(train_dataset, epochs=20, validation_data=test_dataset)
 end = timer()
-print("fitting model took ", end - start, ' seconds')
+print("fitting model took ", end - start2, ' seconds')
 
 print("saving model")
 # save model to drive
@@ -165,3 +169,5 @@ tf.keras.models.save_model(
     save_format=None,
     signatures=None
 )
+print("total runtime is ", end - start1, ' seconds')
+

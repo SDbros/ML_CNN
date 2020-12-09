@@ -4,6 +4,7 @@ import numpy as np
 import tensorflow as tf
 from matplotlib import pyplot as plt
 
+tf.random.set_seed(1337)
 DATA_DIR = tf.keras.utils.get_file(
     "modelnet.zip",
     "http://3dvision.princeton.edu/projects/2014/3DShapeNets/ModelNet10.zip",
@@ -40,7 +41,7 @@ def parse_test_dataset():
 
 test_points, test_labels, CLASS_MAP = parse_test_dataset()
 test_dataset = tf.data.Dataset.from_tensor_slices((test_points, test_labels))
-test_dataset = test_dataset.shuffle(len(test_points)).batch(batch_size=16)
+test_dataset = test_dataset.shuffle(len(test_points)).batch(batch_size=32)
 
 data = test_dataset.take(1)
 
@@ -53,12 +54,19 @@ try:
     model = tf.keras.models.load_model('model_pointnet.h5')
 except FileNotFoundError as e:
     print("model not found")
+    exit(400)
+
+# Evaluate the model on the test data using `evaluate`
+print("Evaluate on test data")
+results = model.evaluate(test_points, test_labels, batch_size=32)
+print("test loss, test acc:", results)
 
 # run test data through model
 preds = model.predict(points)
 preds = tf.math.argmax(preds, -1)
 
 points = points.numpy()
+
 
 # plot points with predicted class and label
 fig = plt.figure(figsize=(15, 10))
