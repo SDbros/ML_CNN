@@ -26,6 +26,7 @@ def parse_test_dataset():
         print("processing class: {}".format(os.path.basename(folder)))
         # store folder name with ID so we can retrieve later
         class_map[i] = folder.split("/")[-1]
+        print(i)
         # gather all files
 
         for f in pointcloud_test_files:

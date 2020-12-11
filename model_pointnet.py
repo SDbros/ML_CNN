@@ -8,11 +8,12 @@ from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras import regularizers
 
-NUM_POINTS = 2048
+NUM_POINTS = 256
 NUM_CLASSES = 10
-BATCH_SIZE = 32
+BATCH_SIZE = 8
 
 tf.random.set_seed(1337)
+#gets saved at C:/Users/{username}/.keras/datasets
 DATA_DIR = tf.keras.utils.get_file(
     "modelnet.zip",
     "http://3dvision.princeton.edu/projects/2014/3DShapeNets/ModelNet10.zip",
