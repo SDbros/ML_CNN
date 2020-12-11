@@ -20,19 +20,19 @@ def parse_test_dataset():
     test_labels = []
     class_map = {}
     folders = glob.glob(os.path.join(DATA_DIR, "[!README]*"))
-    pointcloud_test_files = glob.glob(os.path.join("pointcloud_test_files/*"))
 
     for i, folder in enumerate(folders):
         print("processing class: {}".format(os.path.basename(folder)))
+        pointcloud_test_files = glob.glob(os.path.join("pointcloud_test_files/{}".format(os.path.basename(folder))))
         # store folder name with ID so we can retrieve later
         class_map[i] = folder.split("/")[-1]
-        print(i)
         # gather all files
 
         for f in pointcloud_test_files:
             test_points.append(np.load(f))
             test_labels.append(i)
 
+    print(len(test_points))
     return (
         np.array(test_points),
         np.array(test_labels),

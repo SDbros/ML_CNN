@@ -8,12 +8,12 @@ from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras import regularizers
 
-NUM_POINTS = 256
-NUM_CLASSES = 10
+NUM_POINTS = 64
+NUM_CLASSES = 7
 BATCH_SIZE = 8
 
 tf.random.set_seed(1337)
-#gets saved at C:/Users/{username}/.keras/datasets
+# gets saved at C:/Users/{username}/.keras/datasets
 DATA_DIR = tf.keras.utils.get_file(
     "modelnet.zip",
     "http://3dvision.princeton.edu/projects/2014/3DShapeNets/ModelNet10.zip",
@@ -21,14 +21,15 @@ DATA_DIR = tf.keras.utils.get_file(
 )
 DATA_DIR = os.path.join(os.path.dirname(DATA_DIR), "ModelNet10")
 
-#for total runtime
+# for total runtime
 start1 = timer()
-
+folder_list = ['bathtub', 'bed', 'chair', 'night_stand', 'sofa', 'table', 'toilet']
 # Create needed directories
-if not os.path.exists('pointcloud_test_files'):
-    os.makedirs('pointcloud_test_files')
-if not os.path.exists('pointcloud_train_files'):
-    os.makedirs('pointcloud_train_files')
+for i in folder_list:
+    if not os.path.exists('pointcloud_test_files/{}'.format(i)):
+        os.makedirs('pointcloud_test_files/{}'.format(i))
+    if not os.path.exists('pointcloud_train_files/{}'.format(i)):
+        os.makedirs('pointcloud_train_files/{}'.format(i))
 
 
 def parse_dataset(num_points=2048, generate_point_cloud=True):
@@ -52,13 +53,13 @@ def parse_dataset(num_points=2048, generate_point_cloud=True):
                 cloud = trimesh.load(f).sample(num_points)
                 train_points.append(cloud)
                 train_labels.append(i)
-                np.save('pointcloud_train_files/' + os.path.basename(f), cloud)
+                np.save('pointcloud_train_files/{0}/{1}'.format(os.path.basename(folder), os.path.basename(f)), cloud)
 
             for f in test_files:
                 cloud = trimesh.load(f).sample(num_points)
                 test_points.append(cloud)
                 test_labels.append(i)
-                np.save('pointcloud_test_files/' + os.path.basename(f), cloud)
+                np.save('pointcloud_test_files/{0}/{1}'.format(os.path.basename(folder), os.path.basename(f)), cloud)
 
         else:
             for f in pointcloud_train_files:
@@ -171,4 +172,3 @@ tf.keras.models.save_model(
     signatures=None
 )
 print("total runtime is ", end - start1, ' seconds')
-
