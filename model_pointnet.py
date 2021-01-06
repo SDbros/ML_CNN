@@ -8,9 +8,9 @@ from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras import regularizers
 
-NUM_POINTS = 64
+NUM_POINTS = 16
 NUM_CLASSES = 7
-BATCH_SIZE = 8
+BATCH_SIZE = 32
 
 tf.random.set_seed(1337)
 # gets saved at C:/Users/{username}/.keras/datasets
@@ -32,20 +32,20 @@ for i in folder_list:
         os.makedirs('pointcloud_train_files/{}'.format(i))
 
 
-def parse_dataset(num_points=2048, generate_point_cloud=True):
+def parse_dataset(num_points, generate_point_cloud):
     train_points = []
     train_labels = []
     test_points = []
     test_labels = []
     folders = glob.glob(os.path.join(DATA_DIR, "[!README]*"))
-    pointcloud_train_files = glob.glob(os.path.join("pointcloud_train_files/*"))
-    pointcloud_test_files = glob.glob(os.path.join("pointcloud_test_files/*"))
 
     for i, folder in enumerate(folders):
         print("processing class: {}".format(os.path.basename(folder)))
         # gather all files
         train_files = glob.glob(os.path.join(folder, "train/*"))
         test_files = glob.glob(os.path.join(folder, "test/*"))
+        pointcloud_train_files = glob.glob(os.path.join("pointcloud_train_files/{0}/*".format(os.path.basename(folder))))
+        pointcloud_test_files = glob.glob(os.path.join("pointcloud_test_files/{0}/*".format(os.path.basename(folder))))
 
         if generate_point_cloud:
             print("generating point clouds for: {}".format(os.path.basename(folder)))
@@ -119,7 +119,7 @@ def tnet(inputs, num_features):
     return layers.Dot(axes=(2, 1))([inputs, feat_T])
 
 
-train_points, test_points, train_labels, test_labels = parse_dataset(NUM_POINTS, generate_point_cloud=True)
+train_points, test_points, train_labels, test_labels = parse_dataset(NUM_POINTS, generate_point_cloud=False)
 
 print("Building dataset")
 train_dataset = tf.data.Dataset.from_tensor_slices((train_points, train_labels))
@@ -129,7 +129,7 @@ print('shuffling test and train data')
 train_dataset = train_dataset.shuffle(len(train_points)).map(augment).batch(BATCH_SIZE)
 test_dataset = test_dataset.shuffle(len(test_points)).batch(BATCH_SIZE)
 
-inputs = keras.Input(shape=(NUM_POINTS, 3))
+inputs = keras.Input(shape=(None, 3))
 
 x = tnet(inputs, 3)
 x = conv_bn(x, 32)
